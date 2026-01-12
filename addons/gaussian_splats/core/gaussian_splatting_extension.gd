@@ -10,129 +10,150 @@ func _get_supported_extensions() -> PackedStringArray:
 	print("\n[EXTENSION] _get_supported_extensions called - returning: ", [EXTENSION_NAME])
 	return [EXTENSION_NAME]
 
-func _import_preflight(state: GLTFState, extensions_used: PackedStringArray) -> Error:
-	print("\n=== _import_preflight called ===")
-	print("Extensions used: ", extensions_used)
+func _import_pre_generate(state: GLTFState) -> Error:
 	
-	if extensions_used.has(EXTENSION_NAME):
-		print("[PREFLIGHT] Found KHR_gaussian_splatting extension")
-		# Initialize class variables
-		gaussian_meshes_cache = []
-		gaussian_data_cache = {}
-		
-		# Collect meshes with Gaussian primitives
-		gaussian_meshes_cache = []
-		var meshes: Array = state.json.get("meshes", [])
-		print("[PREFLIGHT] Total meshes in glTF: ", meshes.size())
-		
-		for mesh_index: int in range(meshes.size()):
-			var mesh: Dictionary = meshes[mesh_index]
-			for primitive: Dictionary in mesh.get("primitives", []):
-				if primitive.get("extensions", {}).has(EXTENSION_NAME):
-					gaussian_meshes_cache.append(mesh_index)
-					print("[PREFLIGHT] Found Gaussian splat primitive in mesh ", mesh_index)
-					break
-		
-		print("[PREFLIGHT] Cached Gaussian meshes: ", gaussian_meshes_cache)
-		state.set_additional_data("gaussian_meshes", gaussian_meshes_cache)
-	else:
-		print("[PREFLIGHT] KHR_gaussian_splatting NOT in extensions")
+	# make a material
+	var material = ShaderMaterial.new()
+	material.shader = preload("./gaussian_splat.gdshader")
 	
-	return OK
+	for mesh_i in range(len(state.meshes)):
+		var gltf_mesh: GLTFMesh = state.meshes[mesh_i]
+		var old_import_mesh: ImporterMesh = null
+		var import_mesh: ImporterMesh = gltf_mesh.mesh
+		if not import_mesh:
+			continue
+		var primitives_list: Array = state.json["meshes"][mesh_i]["primitives"] as Array
+		for prim_i in range(import_mesh.get_surface_count()):
+			var gaussian_data: Dictionary = {}
+			var json: Dictionary = primitives_list[prim_i] as Dictionary
+			if "extensions" in json:
+				gaussian_data = extract_gaussian_data(state, json, json["extensions"] as Dictionary, mesh_i, prim_i)
+			if gaussian_data.is_empty():
+				continue
 
-func _import_node(state: GLTFState, gltf_node: GLTFNode, json: Dictionary, parent_node: Node) -> Error:
-	print("\n=== _import_node called ===")
-	print("[IMPORT_NODE] gaussian_meshes_cache size: ", gaussian_meshes_cache.size())
-	print("[IMPORT_NODE] Node name: ", json.get("name", gltf_node.resource_name))
+			print("[GEN_SCENE] Got mesh: ", import_mesh)
+			print("[GEN_SCENE] Mesh surface count: ", import_mesh.get_surface_count() if import_mesh else "null")
 
-	if json.has("mesh"):
-		var mesh_index: int = int(json["mesh"])
-		print("[IMPORT_NODE] Node has mesh index: ", mesh_index)
-		print("[IMPORT_NODE] Is in gaussian_meshes_cache? ", mesh_index in gaussian_meshes_cache)
-
-		if mesh_index in gaussian_meshes_cache:
-			print("[IMPORT_NODE] ✓ This node uses a Gaussian splat mesh")
-			# Note: Material will be applied in _generate_scene_node, not here
-			return OK
-		else:
-			print("[IMPORT_NODE] Mesh index NOT in Gaussian cache")
-	else:
-		print("[IMPORT_NODE] Node has NO mesh attribute")
-
-	return OK
-
-func _generate_scene_node(state: GLTFState, gltf_node: GLTFNode, parent_node: Node) -> Node3D:
-	print("\n=== _generate_scene_node called ===")
-	print("[GEN_SCENE] gltf_node.mesh index: ", gltf_node.mesh)
-	print("[GEN_SCENE] Is in gaussian_meshes_cache? ", gltf_node.mesh in gaussian_meshes_cache)
-
-	if gltf_node.mesh >= 0 and gltf_node.mesh in gaussian_meshes_cache:
-		print("[GEN_SCENE] ✓ INTERCEPTING: This is a Gaussian splat node!")
-
-		# Create the MeshInstance3D
-		var mesh_instance = MeshInstance3D.new()
-		print("[GEN_SCENE] Created MeshInstance3D")
-
-		# Get the mesh from the GLTFMesh
-		var gltf_mesh: GLTFMesh = state.meshes[gltf_node.mesh]
-		print("[GEN_SCENE] Retrieved GLTFMesh")
-
-		var import_mesh = gltf_mesh.get_mesh()
-		print("[GEN_SCENE] Got mesh: ", import_mesh)
-		print("[GEN_SCENE] Mesh surface count: ", import_mesh.get_surface_count() if import_mesh else "null")
-
-		if import_mesh:
-			# Create shader material BEFORE assigning mesh
-			var shader_path: String = "res://addons/gaussian_splats/core/gaussian_splat.gdshader"
-			print("[GEN_SCENE] Shader path: ", shader_path)
-			
-			var shader: Shader = load(shader_path)
-			print("[GEN_SCENE] Loaded shader: ", shader)
-			
-			var material: ShaderMaterial = ShaderMaterial.new()
-			material.shader = shader
-			material.resource_local_to_scene = true
 			print("[GEN_SCENE] Created ShaderMaterial: ", material)
 			print("[GEN_SCENE] Material type: ", material.get_class())
 			
-			# Set material on the mesh surface BEFORE assigning to MeshInstance3D
-			if import_mesh.get_surface_count() > 0:
-				import_mesh.set_surface_material(0, material)
-				print("[GEN_SCENE] ✓ Set ShaderMaterial on mesh surface 0")
-			else:
-				print("[GEN_SCENE] ERROR: Mesh has no surfaces!")
+			if old_import_mesh == null:
+				old_import_mesh = import_mesh.duplicate() # ImporterMesh has cheap duplicate
+				import_mesh.clear()
+			while import_mesh.get_surface_count() < prim_i:
+				# Add the intermediate non-gaussian surfaces
+				var old_prim_i: int = import_mesh.get_surface_count()
+				import_mesh.add_surface(
+					old_import_mesh.get_surface_primitive_type(old_prim_i),
+					old_import_mesh.get_surface_arrays(old_prim_i),
+					[],
+					{},
+					old_import_mesh.get_surface_material(old_prim_i),
+					old_import_mesh.get_surface_name(old_prim_i),
+					old_import_mesh.get_surface_format(old_prim_i))
 			
-			mesh_instance.mesh = import_mesh
-			print("[GEN_SCENE] ✓ Assigned mesh to MeshInstance3D")
-			
-			# Don't check surface overrides immediately - let Godot initialize surfaces first
-			print("[GEN_SCENE] Skipping immediate surface override check")
-			
-			print("[GEN_SCENE] ✓ RETURNING custom mesh_instance")
-			return mesh_instance
-		else:
-			print("[GEN_SCENE] ERROR: import_mesh is null!")
+			add_gaussian_surface(import_mesh, material, gaussian_data, old_import_mesh.get_surface_name(prim_i))
+			print("[GEN_SCENE] ✓ Set ShaderMaterial on mesh surface 0")
 
-		return mesh_instance
-	else:
-		print("[GEN_SCENE] ✗ NOT a Gaussian splat (mesh not in cache), returning null for default handling")
+		if old_import_mesh == null:
+			# No gaussian splats here
+			continue
+		while import_mesh.get_surface_count() < old_import_mesh.get_surface_count():
+			# Add the remaining non-gaussian surfaces
+			var old_prim_i: int = import_mesh.get_surface_count()
+			import_mesh.add_surface(
+				old_import_mesh.get_surface_primitive_type(old_prim_i),
+				old_import_mesh.get_surface_arrays(old_prim_i),
+				[],
+				{},
+				old_import_mesh.get_surface_material(old_prim_i),
+				old_import_mesh.get_surface_name(old_prim_i),
+				old_import_mesh.get_surface_format(old_prim_i))
 
-	# Not a Gaussian splat node, let default handling take over
-	return null
+	return OK
 
-func _import_mesh(state: GLTFState, json: Dictionary, extensions: Dictionary, index: int):
+
+func vec4array_quat_to_vec3_normal_quads(rotations: PackedVector4Array) -> PackedVector3Array:
+	var result := PackedVector3Array()
+	for vec4 in rotations:
+		var basis := Basis(Quaternion(vec4.x, vec4.y, vec4.z, vec4.w))
+		result.append(basis.z)
+		result.append(basis.z)
+		result.append(basis.z)
+		result.append(basis.z)
+	return result
+
+func vec4array_quat_to_float32_tangent_quads(rotations: PackedVector4Array) -> PackedFloat32Array:
+	var result := PackedFloat32Array()
+	for vec4 in rotations:
+		var basis := Basis(Quaternion(vec4.x, vec4.y, vec4.z, vec4.w))
+		var d: float = signf(basis.z.dot(basis.z.cross(basis.x)))
+		for i in range(4):
+			result.append(basis.x.x)
+			result.append(basis.x.y)
+			result.append(basis.x.z)
+			result.append(d)
+	return result
+
+func vec4array_to_pair_uv_quads(array: PackedVector4Array) -> Array[PackedVector2Array]:
+	var uv := PackedVector2Array()
+	var uv2 := PackedVector2Array()
+	for vec4 in array:
+		uv.append(Vector2(vec4.x, vec4.y))
+		uv2.append(Vector2(vec4.z, vec4.w)) # FIXME: scale.w unused
+		uv.append(Vector2(vec4.x, vec4.y))
+		uv2.append(Vector2(vec4.z, vec4.w)) # FIXME: scale.w unused
+		uv.append(Vector2(vec4.x, vec4.y))
+		uv2.append(Vector2(vec4.z, vec4.w)) # FIXME: scale.w unused
+		uv.append(Vector2(vec4.x, vec4.y))
+		uv2.append(Vector2(vec4.z, vec4.w)) # FIXME: scale.w unused
+	return [uv, uv2]
+
+func add_gaussian_surface(import_mesh: ImporterMesh, material: ShaderMaterial, gaussian_data: Dictionary, name: String):
+	var arrays: Array
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = gaussian_data["positions"]
+	print("Vertex len " + str((arrays[Mesh.ARRAY_VERTEX])))
+	arrays[Mesh.ARRAY_NORMAL] = vec4array_quat_to_vec3_normal_quads(gaussian_data["rotations"])
+	print("Normal len " + str((arrays[Mesh.ARRAY_NORMAL])))
+	arrays[Mesh.ARRAY_TANGENT] = vec4array_quat_to_float32_tangent_quads(gaussian_data["rotations"])
+	print("Tangent len " + str((arrays[Mesh.ARRAY_TANGENT])))
+	arrays[Mesh.ARRAY_COLOR] = vec4array_alpha_to_color_array_quads(gaussian_data["sh_coefficients"][0], gaussian_data["opacities"])
+	print("Color len " + str((arrays[Mesh.ARRAY_COLOR])))
+	var uv_uv2: Array[PackedVector2Array] = vec4array_to_pair_uv_quads(gaussian_data["scales"])
+	arrays[Mesh.ARRAY_TEX_UV] = uv_uv2[0]
+	arrays[Mesh.ARRAY_TEX_UV2] = uv_uv2[1]
+	var indices: PackedInt32Array
+	indices.resize(len(gaussian_data["positions"]) / 4 * 6)
+	# 0 1
+	# 2 3
+	# 0 1 2 2 1 3
+	for i in range(len(gaussian_data["positions"]) / 4):
+		indices[i * 6] = i * 4
+		indices[i * 6 + 1] = i * 4 + 1
+		indices[i * 6 + 2] = i * 4 + 2
+		indices[i * 6 + 3] = i * 4 + 2
+		indices[i * 6 + 4] = i * 4 + 1
+		indices[i * 6 + 5] = i * 4 + 3
+	arrays[Mesh.ARRAY_INDEX] = indices
+	print("ARRAY_INDEX len " + str((arrays[Mesh.ARRAY_INDEX])))
+	# Set material on the mesh surface BEFORE assigning to MeshInstance3D
+	import_mesh.add_surface(
+		Mesh.PRIMITIVE_TRIANGLES,
+		arrays,
+		[],
+		{},
+		material,
+		name,
+		0) # TODO: Add customs or 8 bone weights here
+
+
+func extract_gaussian_data(state: GLTFState, json: Dictionary, extensions: Dictionary, mesh_index: int, primitive_index: int) -> Dictionary:
 	if extensions.has(EXTENSION_NAME):
-		var mesh: Mesh = Mesh.new()
-		return mesh
-	return null
-
-func _import_primitive(state: GLTFState, json: Dictionary, extensions: Dictionary, mesh_index: int, primitive_index: int):
-	if extensions.has(EXTENSION_NAME):
-		if not gaussian_data_cache.has(mesh_index):
-			gaussian_data_cache[mesh_index] = {
+		var data: Dictionary = {
 				"positions": PackedVector3Array(),
-				"scales": PackedVector3Array(),
-				"rotations": [],
+				"scales": PackedVector4Array(),
+				"rotations": PackedVector4Array(),
 				"opacities": PackedFloat32Array(),
 				"sh_coefficients": [],
 				"kernel": "ellipse",
@@ -140,8 +161,6 @@ func _import_primitive(state: GLTFState, json: Dictionary, extensions: Dictionar
 				"sorting_method": "cameraDistance",
 				"projection": "perspective"
 			}
-		
-		var data: Dictionary = gaussian_data_cache[mesh_index]
 		var ext_data: Dictionary = extensions[EXTENSION_NAME]
 		
 		# Extract attributes
@@ -169,48 +188,89 @@ func _import_primitive(state: GLTFState, json: Dictionary, extensions: Dictionar
 				break
 		
 		# Extract data from accessors
-		var positions: PackedVector3Array = PackedVector3Array(extract_accessor_data(state, position_accessor, "VEC3"))
-		var scales: PackedVector3Array = PackedVector3Array(extract_accessor_data(state, scale_accessor, "VEC3"))
-		var rotations_data: Array = extract_accessor_data(state, rotation_accessor, "VEC4")
-		var rotations: Array[Quaternion] = []
-		for r: Variant in rotations_data:
-			rotations.append(Quaternion(r.x, r.y, r.z, r.w))
-		var opacities: PackedFloat32Array = PackedFloat32Array(extract_accessor_data(state, opacity_accessor, "SCALAR"))
+		var positions: PackedVector3Array = vec4array_to_vec3array_quads(extract_accessor_data(state, position_accessor, "VEC3"))
+		var scales: PackedVector4Array = extract_accessor_data(state, scale_accessor, "VEC3")
+		var rotations_data: PackedVector4Array = extract_accessor_data(state, rotation_accessor, "VEC4")
+		#var rotations: Array[Quaternion] = []
+		#for r: Variant in rotations_data:
+		#	rotations.append(Quaternion(r.x, r.y, r.z, r.w))
+		var opacities: PackedVector4Array = extract_accessor_data(state, opacity_accessor, "SCALAR")
 		
-		var sh_coefficients: Array = []
+		var sh_coefficients: Array[PackedVector4Array] = []
 		for deg_coefs: Array in sh_degrees:
-			var deg_data: Array[PackedVector3Array] = []
 			for acc: int in deg_coefs:
-				deg_data.append(PackedVector3Array(extract_accessor_data(state, acc, "VEC3")))
-			sh_coefficients.append(deg_data)
-		
+				sh_coefficients.append(extract_accessor_data(state, acc, "VEC3"))
 		# Append to mesh data
-		data["positions"].append_array(positions)
-		data["scales"].append_array(scales)
-		data["rotations"].append_array(rotations)
-		data["opacities"].append_array(opacities)
+		data["positions"] = positions
+		data["scales"] = scales
+		data["rotations"] = rotations_data
+		data["opacities"] = opacities
 		# For SH, assume same structure, append
 		if data["sh_coefficients"].is_empty():
 			data["sh_coefficients"] = sh_coefficients
-		else:
-			for deg: int in range(sh_coefficients.size()):
-				if deg < data["sh_coefficients"].size():
-					for n: int in range(sh_coefficients[deg].size()):
-						if n < data["sh_coefficients"][deg].size():
-							data["sh_coefficients"][deg][n].append_array(sh_coefficients[deg][n])
+		#else:
+		#	for deg: int in range(sh_coefficients.size()):
+		#		if deg < data["sh_coefficients"].size():
+		#			for n: int in range(sh_coefficients[deg].size()):
+		#				if n < data["sh_coefficients"][deg].size():
+		#					data["sh_coefficients"][deg][n].append_array(sh_coefficients[deg][n])
 		
 		# Update ext_data if not set
-		if data["kernel"] == "ellipse":
+		if true: # ext_data["kernel"] == "ellipse":
 			data["kernel"] = ext_data.get("kernel", "ellipse")
 			data["color_space"] = ext_data.get("colorSpace", "srgb_rec709_display")
 			data["sorting_method"] = ext_data.get("sortingMethod", "cameraDistance")
 			data["projection"] = ext_data.get("projection", "perspective")
 		
 		print("GaussianSplattingExtension: Extracted Gaussian data for mesh ", mesh_index, " primitive ", primitive_index, ": ", positions.size(), " splats")
-	# Return null
-	return null
+		return data
+	return {}
 
-func extract_accessor_data(state: GLTFState, accessor_index: int, type: String) -> Array:
+func vec4array_to_vec3array_quads(array: PackedVector4Array) -> PackedVector3Array:
+	var result: PackedVector3Array
+	for vec in array:
+		result.append(Vector3(vec.x, vec.y, vec.z))
+		result.append(Vector3(vec.x, vec.y, vec.z))
+		result.append(Vector3(vec.x, vec.y, vec.z))
+		result.append(Vector3(vec.x, vec.y, vec.z))
+	return result
+
+func vec4array_to_colorarray_quads(array: PackedVector4Array) -> PackedColorArray:
+	var result: PackedColorArray
+	for vec in array:
+		result.append(Color(vec.x, vec.y, vec.z, vec.w))
+		result.append(Color(vec.x, vec.y, vec.z, vec.w))
+		result.append(Color(vec.x, vec.y, vec.z, vec.w))
+		result.append(Color(vec.x, vec.y, vec.z, vec.w))
+	return result
+
+func vec4array_to_float32array_quads(array: PackedVector4Array) -> PackedFloat32Array:
+	var result: PackedFloat32Array
+	for vec in array:
+		for i in range(4):
+			result.append(vec.x)
+			result.append(vec.y)
+			result.append(vec.z)
+			result.append(vec.w)
+	return result
+
+func vec4array_alpha_to_color_array_quads(array: PackedVector4Array, opacities: PackedVector4Array) -> PackedColorArray:
+	var result: PackedColorArray
+	var i: int = 0
+	print(array)
+	print(opacities)
+	print("color alpha len " + str(len(array)) + " colors " + str(len(opacities)))
+	for vec in array:
+		var alpha: float = clampf(opacities[i].x, 0.0, 1.0)
+		result.append(Color(vec.x, vec.y, vec.z, alpha))
+		result.append(Color(vec.x, vec.y, vec.z, alpha))
+		result.append(Color(vec.x, vec.y, vec.z, alpha))
+		result.append(Color(vec.x, vec.y, vec.z, alpha))
+		i += 1
+	print("OUTPUT COLORS!!!"  + str(result))
+	return result
+
+func extract_accessor_data(state: GLTFState, accessor_index: int, type: String) -> PackedVector4Array:
 	if accessor_index == -1:
 		return []
 	
@@ -225,10 +285,11 @@ func extract_accessor_data(state: GLTFState, accessor_index: int, type: String) 
 	var component_size: int = get_component_type_size(component_type)
 	var num_components: int = get_type_components(type)
 	var stride: int = buffer_view.byte_stride if buffer_view.byte_stride > 0 else component_size * num_components
-	
-	var result: Array = []
+
+	print(type + "  /  " + str(count) + " / " + str(component_size) + " / " + str(component_type))
+	var result: PackedVector4Array
 	for i: int in range(count):
-		var vec: Array[float] = []
+		var vec: Vector4
 		for c: int in range(num_components):
 			var value: float = 0
 			if component_type == 5126:  # FLOAT
@@ -249,14 +310,8 @@ func extract_accessor_data(state: GLTFState, accessor_index: int, type: String) 
 				value = data.decode_s16(offset + i * stride + c * 2)
 				if accessor.normalized:
 					value = (value + 32768) / 65535.0 * 2 - 1
-			vec.append(value)
-		
-		if type == "SCALAR":
-			result.append(vec[0])
-		elif type == "VEC3":
-			result.append(Vector3(vec[0], vec[1], vec[2]))
-		elif type == "VEC4":
-			result.append(Quaternion(vec[0], vec[1], vec[2], vec[3]))  # Assuming quaternion
+			vec[c] = value
+		result.append(vec)
 	
 	return result
 
@@ -283,21 +338,3 @@ func get_type_components(type: String) -> int:
 			return 4
 		_:
 			return 0
-
-func create_quad_mesh(data, i) -> ImporterMesh:
-	var plane: PlaneMesh = PlaneMesh.new()
-	plane.size = Vector2(2, 2)
-	var arrays: Array = plane.surface_get_arrays(0)
-	var mesh: ImporterMesh = ImporterMesh.new()
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = load("res://addons/gaussian_splats/core/gaussian_splat.gdshader")
-	material.set_shader_parameter("scale", data["scales"][i])
-	material.set_shader_parameter("opacity", data["opacities"][i])
-	var sh: Vector3 = data["sh_coefficients"][0][0][i] if data["sh_coefficients"].size() > 0 and data["sh_coefficients"][0].size() > 0 and data["sh_coefficients"][0][0].size() > i else Vector3(1,1,1)
-	material.set_shader_parameter("sh_0", sh)	
-	var actual_scale: Vector3 = Vector3(exp(data["scales"][i].x), exp(data["scales"][i].y), exp(data["scales"][i].z))
-	var max_scale_val: float = max(actual_scale.x, max(actual_scale.y, actual_scale.z))
-	material.set_shader_parameter("max_scale", max_scale_val)
-	material.resource_local_to_scene = true
-	mesh.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, material)
-	return mesh
