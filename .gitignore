@@ -27,3 +27,5 @@ obj/
 
 # Export presets (uncomment if you want to ignore)
 # export_presets.cfg
+
+.DS_Store
