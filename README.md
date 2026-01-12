@@ -5,14 +5,13 @@ This project implements initial support for KHR_gaussian_splatting extension in 
  - [x] Successfully packed degree 3 Spherical Harmonics into the Godot Engine vertex attributes
  - [ ] Debugging color reproduction
  - [ ] Hard coded focal length calculation
- - [ ] Missing sorting
+ - [ ] Missing sorting splats by distance for correct blending
 
 ## Features
 
 - Loads glTF files with KHR_gaussian_splatting extension
 - Renders Gaussian splats as billboards with basic Gaussian falloff
 - Supports position, scale, rotation, opacity, and spherical harmonics (degree 3)
-- TODO: Sorts splats by distance for correct blending
 
 ## Usage
 
