@@ -122,7 +122,6 @@ func _import_node(state: GLTFState, gltf_node: GLTFNode, json: Dictionary, paren
 					material.set_shader_parameter("sh_0", data["sh_coefficients"][0][i])
 				else:
 					material.set_shader_parameter("sh_0", Vector3(1,1,1))
-				material.resource_local_to_scene = true
 				var gltf_mesh = state.get_meshes()[gltf_node.mesh]
 				gltf_mesh.mesh.set_surface_material(gltf_mesh.mesh.get_surface_count() - 1, material)
 				var meshes = state.get_meshes()
@@ -303,17 +302,19 @@ func get_type_components(type: String) -> int:
 			return 0
 
 func create_quad_mesh(data, i) -> ImporterMesh:
+	var plane: PlaneMesh = PlaneMesh.new()
+	plane.size = Vector2(2, 2)
+	var arrays: Array = plane.surface_get_arrays(0)
 	var mesh: ImporterMesh = ImporterMesh.new()
-	var vertices: PackedVector3Array = PackedVector3Array([
-		Vector3(-1, -1, 0),
-		Vector3(1, -1, 0),
-		Vector3(1, 1, 0),
-		Vector3(-1, 1, 0)
-	])
-	var indices: PackedInt32Array = PackedInt32Array([0, 1, 2, 2, 3, 0])
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_INDEX] = indices
-	mesh.add_surface(Mesh.PRIMITIVE_POINTS, arrays)
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = load("res://addons/gaussian_splats/core/gaussian_splat.gdshader")
+	material.set_shader_parameter("scale", data["scales"][i])
+	material.set_shader_parameter("opacity", data["opacities"][i])
+	var sh: Vector3 = data["sh_coefficients"][0][0][i] if data["sh_coefficients"].size() > 0 and data["sh_coefficients"][0].size() > 0 and data["sh_coefficients"][0][0].size() > i else Vector3(1,1,1)
+	material.set_shader_parameter("sh_0", sh)	
+	var actual_scale: Vector3 = Vector3(exp(data["scales"][i].x), exp(data["scales"][i].y), exp(data["scales"][i].z))
+	var max_scale_val: float = max(actual_scale.x, max(actual_scale.y, actual_scale.z))
+	material.set_shader_parameter("max_scale", max_scale_val)
+	material.resource_local_to_scene = true
+	mesh.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, material)
 	return mesh
