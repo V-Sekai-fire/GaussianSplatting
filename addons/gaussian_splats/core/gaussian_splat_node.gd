@@ -20,9 +20,12 @@ func setup_splats():
 	for i in range(positions.size()):
 		var mesh_instance = MeshInstance3D.new()
 		var mesh = create_quad_mesh()
+		mesh_instance.mesh = mesh
 		
 		var material = ShaderMaterial.new()
-		material.shader = preload("res://addons/gaussian_splats/core/gaussian_splat.gdshader")
+		material.shader = load("res://addons/gaussian_splats/core/gaussian_splat.gdshader")
+		if material.shader == null:
+			print("Failed to load shader from res://addons/gaussian_splats/core/gaussian_splat.gdshader")
 		material.set_shader_parameter("scale", scales[i])
 		material.set_shader_parameter("opacity", opacities[i])
 		if sh_coefficients.size() > 0 and sh_coefficients[0].size() > i:
@@ -30,8 +33,7 @@ func setup_splats():
 		else:
 			material.set_shader_parameter("sh_0", Vector3(1,1,1))
 		material.resource_local_to_scene = true
-		mesh.surface_set_material(0, material)
-		mesh_instance.mesh = mesh
+		mesh_instance.material_override = material
 		mesh_instance.position = positions[i]
 		mesh_instance.quaternion = rotations[i]
 		add_child(mesh_instance)
