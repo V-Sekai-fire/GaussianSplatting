@@ -17,6 +17,6 @@ https://github.com/KhronosGroup/glTF/pull/2490
 
 ## Usage
 
-1. Open the project in Godot 4.1+
+1. Open the project in Godot 4.6+
 2. Import your glTF file with Gaussian splats
 3. Run the scene
