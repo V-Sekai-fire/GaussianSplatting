@@ -6,7 +6,10 @@ var gaussian_extension: GaussianSplattingExtension
 func _enter_tree():
 	print("Gaussian Splats addon enabled - registering extension")
 	gaussian_extension = GaussianSplattingExtension.new()
+	print("Created GaussianSplattingExtension instance: ", gaussian_extension)
+	print("Registering with GLTFDocument...")
 	GLTFDocument.register_gltf_document_extension(gaussian_extension)
+	print("✓ Extension registered successfully")
 
 func _exit_tree():
 	if gaussian_extension:
