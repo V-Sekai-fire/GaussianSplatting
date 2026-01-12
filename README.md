@@ -1,6 +1,6 @@
 # Gaussian Splatting Godot Implementation
 
-This project implements support for KHR_gaussian_splatting extension in Godot Engine, using the Compatibility renderer for WebGL2 compatibility.
+This project implements support for KHR_gaussian_splatting extension in Godot Engine.
 
 ## Features
 
