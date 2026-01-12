@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Lyuma
+# Copyright (c) 2025 K. S. Ernest (iFire) Lee
+
 extends GLTFDocumentExtension
 class_name GaussianSplattingExtension
 

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Lyuma
+// Copyright (c) 2025 K. S. Ernest (iFire) Lee
+
 shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_disabled, skip_vertex_transform, unshaded, fog_disabled;
 
