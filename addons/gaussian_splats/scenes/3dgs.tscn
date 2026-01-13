@@ -41,21 +41,16 @@ render_mode unshaded;
 render_mode cull_disabled;
 render_mode skip_vertex_transform;
 
+#define SCREEN_QUAD_OUTPUT
 #include \"res://addons/gaussian_splats/core/screen_quad_renderer.gdshaderinc\"
 
 void vertex() {
-	vec2 vertex_base = vec2(UV * 2.0 - 1.0);
-	
-	vec2 screen_size = VIEWPORT_SIZE;
-	
-	MODELVIEW_MATRIX = QuadTransform2(
-			vec2(screen_size/2.0),
-			normalize(vec2(1,.2*sin(TIME))),
-			vec2(100, 200),
-			0.9,
-			screen_size);
-	
 	VERTEX.xy = UV;
+	
+	QUAD_POS = vec2(VIEWPORT_SIZE/2.0);
+	QUAD_DIR = normalize(vec2(1,.2*sin(TIME)));
+	QUAD_SIZE = vec2(100, 200);
+	QUAD_DEPTH = 0.5;
 	
 	processQuadVertex();
 }
@@ -65,8 +60,7 @@ void fragment() {
 	ALPHA = 1.0;
 	
 	ALBEDO = vec3(UV,0);
-	
-	colorQuad(ALBEDO, ALPHA);
+	ALPHA = 1.0 - smoothstep(0.0, 0.5, length(UV-0.5));
 	
 	processQuadFragment();
 }

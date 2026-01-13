@@ -6,6 +6,13 @@ uniform bool debug_screen_quad = true;
 
 varying vec2 __quad_vertex_base;
 
+#ifdef SCREEN_QUAD_OUTPUT
+varying vec2 QUAD_POS;
+varying vec2 QUAD_DIR;
+varying vec2 QUAD_SIZE;
+varying float QUAD_DEPTH;
+#endif /*!SCREEN_QUAD_OUTPUT*/
+
 // Model space to clip space
 //mat4 __QuadTransform(vec3 center, vec2 screen_size, vec2 screen_dir, mat4 modelToView){
 
@@ -27,13 +34,13 @@ mat4 QuadTransform(mat4 modelToScreen, vec2 screen_size) {
 
 // Returns a model space to clip space transform
 // z_depth always given in the range [0,1], even for OpenGL.
-mat4 QuadTransform2(vec2 pos, vec2 dir, vec2 scale, float z_depth, vec2 screen_size) {
+mat4 QuadTransform2(vec2 pos, vec2 dir, vec2 size, float z_depth, vec2 screen_size) {
 	mat4 modelToScreen = mat4(1);
 	 
 	modelToScreen[3].xy = pos;
 	modelToScreen[3].z = mix(CLIP_SPACE_FAR, 1.0, z_depth);
-	modelToScreen[0].xy = dir * scale.x;
-	modelToScreen[1].xy = vec2(-dir.y, dir.x) * scale.y;
+	modelToScreen[0].xy = dir * size.x;
+	modelToScreen[1].xy = vec2(-dir.y, dir.x) * size.y;
 	
 	return QuadTransform(modelToScreen, screen_size);
 }
@@ -64,7 +71,15 @@ void __processQuadFragment(inout vec3 albedo, inout float alpha){
 
 void __screen_quad_no_op(){}
 
-#define processQuadVertex __quad_vertex_base = VERTEX.xy; __processQuadVertex(MODELVIEW_MATRIX, VERTEX.xy, POSITION); __screen_quad_no_op
+#ifdef SCREEN_QUAD_OUTPUT
+#define processQuadOutputs MODELVIEW_MATRIX=QuadTransform2(QUAD_POS, QUAD_DIR, QUAD_SIZE, QUAD_DEPTH, VIEWPORT_SIZE)
+#else
+#define processQuadOutputs
+#endif
+
+#define processQuadVertex processQuadOutputs; __quad_vertex_base = VERTEX.xy; __processQuadVertex(MODELVIEW_MATRIX, VERTEX.xy, POSITION); __screen_quad_no_op
+
+
 #define processQuadFragment __processQuadFragment(ALBEDO, ALPHA); __screen_quad_no_op
 
 //#define QuadTransform(screen_transform) __QuadTransform(screen_transform, VIEWPORT_SIZE)
