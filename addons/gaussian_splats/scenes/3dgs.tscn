@@ -45,7 +45,7 @@ render_mode skip_vertex_transform;
 #include \"res://addons/gaussian_splats/core/screen_quad_renderer.gdshaderinc\"
 
 void vertex() {
-	VERTEX.xy = UV;
+	QUAD_VERTEX_BASE = UV;
 	
 	QUAD_POS = vec2(VIEWPORT_SIZE/2.0);
 	QUAD_DIR = normalize(vec2(1,.2*sin(TIME)));

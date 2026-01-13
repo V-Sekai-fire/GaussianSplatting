@@ -4,7 +4,8 @@
 group_uniforms quad_renderer;
 uniform bool debug_screen_quad = true;
 
-varying vec2 __quad_vertex_base;
+varying vec2 QUAD_VERTEX_BASE;
+#define __quad_vertex_base QUAD_VERTEX_BASE
 
 #ifdef SCREEN_QUAD_OUTPUT
 varying vec2 QUAD_POS;
@@ -77,7 +78,7 @@ void __screen_quad_no_op(){}
 #define processQuadOutputs
 #endif
 
-#define processQuadVertex processQuadOutputs; __quad_vertex_base = VERTEX.xy; __processQuadVertex(MODELVIEW_MATRIX, VERTEX.xy, POSITION); __screen_quad_no_op
+#define processQuadVertex processQuadOutputs; __processQuadVertex(MODELVIEW_MATRIX, __quad_vertex_base.xy, POSITION); __screen_quad_no_op
 
 
 #define processQuadFragment __processQuadFragment(ALBEDO, ALPHA); __screen_quad_no_op
