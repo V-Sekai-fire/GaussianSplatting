@@ -3,7 +3,14 @@
 // Copyright (c) 2026 K. S. Ernest (iFire) Lee
 
 shader_type spatial;
-render_mode blend_mix, depth_draw_never, cull_disabled, skip_vertex_transform, unshaded, fog_disabled;
+
+render_mode blend_mix;
+render_mode depth_draw_never;
+render_mode cull_disabled;
+render_mode skip_vertex_transform;
+render_mode unshaded;
+render_mode fog_disabled;
+//render_mode wireframe;
 
 // FIXME: precision highp float;
 
@@ -126,7 +133,7 @@ void vertex() {
 	vec3 a_sh_15 = vec3(WEIGHTSy.y, unpackHalf2x16(floatBitsToUint(BONE_WEIGHTS.z)));
 
 	// Steps 1-4: Projection, Covariance, and Bounding Box logic (identical)
-	vec4 view_space_pos = MODELVIEW_MATRIX * vec4(VERTEX, 1.0f);
+	vec4 view_space_pos = MODELVIEW_MATRIX * vec4(a_glob_position, 1.0f);
 	
 	float z_depth = view_space_pos.z;
 	if(z_depth > 0.0) { //z_depth <= 0.1f) { // FIXME
@@ -137,17 +144,6 @@ void vertex() {
 		vec3 scale = exp(a_glob_scale);
 		
 		mat3 rotation_matrix = mat3(TANGENT, BINORMAL, NORMAL);
-		/*
-		mat3 rotation_matrix = mat3(1.0f - 2.0f * (a_glob_rotation.y * a_glob_rotation.y + a_glob_rotation.z * a_glob_rotation.z), 
-									2.0f * (a_glob_rotation.x * a_glob_rotation.y - a_glob_rotation.z * a_glob_rotation.w), 
-									2.0f * (a_glob_rotation.x * a_glob_rotation.z + a_glob_rotation.y * a_glob_rotation.w), 
-									2.0f * (a_glob_rotation.x * a_glob_rotation.y + a_glob_rotation.z * a_glob_rotation.w), 
-									1.0f - 2.0f * (a_glob_rotation.x * a_glob_rotation.x + a_glob_rotation.z * a_glob_rotation.z), 
-									2.0f * (a_glob_rotation.y * a_glob_rotation.z - a_glob_rotation.x * a_glob_rotation.w), 
-									2.0f * (a_glob_rotation.x * a_glob_rotation.z - a_glob_rotation.y * a_glob_rotation.w), 
-									2.0f * (a_glob_rotation.y * a_glob_rotation.z + a_glob_rotation.x * a_glob_rotation.w), 
-									1.0f - 2.0f * (a_glob_rotation.x * a_glob_rotation.x + a_glob_rotation.y * a_glob_rotation.y));
-		*/
 		
 		mat3 scale_matrix = mat3(vec3(scale.x, 0, 0),
 								 vec3(0, scale.y, 0),
@@ -174,11 +170,13 @@ void vertex() {
 			float lambda1 = mid + sqrt(max(0.01f, mid * mid - det));
 			float radius = ceil(3.0f * sqrt(max(lambda1, 0.0f)));
 			
+			vec2 test = vec2(POSITION.w / PROJECTION_MATRIX[0][0], POSITION.w / PROJECTION_MATRIX[1][1]) * 2.0;
+			
 			vec4 clip_space_pos = PROJECTION_MATRIX * view_space_pos;
 			// vec4 clip_space_pos = u_projection_matrix * view_space_pos;
 			vec2 ndc_pos = clip_space_pos.xy / clip_space_pos.w;
-			clip_space_pos.xy += a_quad_vertex * radius / u_focal_length * clip_space_pos.w;
-			VERTEX = view_space_pos.xyz + vec3(a_quad_vertex, 0.0);
+			clip_space_pos.xy += a_quad_vertex * radius / (u_focal_length/2.0) * clip_space_pos.w;
+			//VERTEX = view_space_pos.xyz + vec3(a_quad_vertex, 0.0);
 			POSITION = clip_space_pos;
 			//POSITION = PROJECTION_MATRIX * vec4(VERTEX, 1.0);
 
@@ -215,7 +213,9 @@ void vertex() {
 				}
 			}
 
-			v_color = 1.0f / (1.0f + exp(-result));
+			v_color = result + 0.5;
+			v_color = clamp(v_color, 0.0, 1.0);
+			
 			v_opacity = a_glob_opacity;
 
 			// --- STEP 6: Pass Data to Fragment Shader ---
@@ -225,9 +225,10 @@ void vertex() {
 			v_cov2d_inv_upper.y = -inv_det * cov2d[0][1];
 			v_cov2d_inv_upper.z = inv_det * cov2d[0][0];
 			// vec2 resolution = vec2(POSITION.w / PROJECTION_MATRIX[0][0] * 2.0f, POSITION.w / PROJECTION_MATRIX[1][1] * 2.0f);
-			vec2 resolution = 2.0 * atan(1.0 / vec2(PROJECTION_MATRIX[0].x, PROJECTION_MATRIX[1].y));
+			//vec2 resolution = 2.0 * atan(1.0 / vec2(PROJECTION_MATRIX[0].x, PROJECTION_MATRIX[1].y));
 			//v_center_px = (ndc_pos * 0.5f + 0.5f) * resolution;
-			v_center_px = (ndc_pos - POSITION.xy / POSITION.w) * resolution * resolution;
+			//v_center_px = (ndc_pos - POSITION.xy / POSITION.w) * resolution * resolution;
+			v_center_px = (ndc_pos * 0.5f + 0.5f) * VIEWPORT_SIZE;
 		}
 	}
 }
@@ -260,7 +261,7 @@ void fragment () {
 
 	// Find the vector from the current pixel's coordinate (gl_FragCoord.xy)
 	// to the center of the projected Gaussian.
-	vec2 d = v_center_px; //(FRAGCOORD.xy - v_center_px);
+	vec2 d = (FRAGCOORD.xy - v_center_px);
 
 	// Evaluate the quadratic form: (x-μ)ᵀ * (Σ')⁻¹ * (x-μ)
 	// This gives us the squared Mahalanobis distance, which is the exponent's power.
@@ -312,6 +313,8 @@ void fragment () {
 	}
 	ALBEDO = final_color;
 	ALPHA = final_alpha;
+	
+	//ALPHA = 1.0;
 }
 
 
