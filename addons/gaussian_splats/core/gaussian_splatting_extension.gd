@@ -10,6 +10,9 @@ const EXTENSION_NAME: String = "KHR_gaussian_splatting"
 var gaussian_meshes_cache: Array[int] = []
 var gaussian_data_cache: Dictionary = {}
 
+## 35mm film format image size. https://en.wikipedia.org/wiki/135_film
+const film_format_35mm := Vector2(36,24)
+
 func _get_supported_extensions() -> PackedStringArray:
 	print("\n[EXTENSION] _get_supported_extensions called - returning: ", [EXTENSION_NAME])
 	return [EXTENSION_NAME]
@@ -19,6 +22,14 @@ func _import_pre_generate(state: GLTFState) -> Error:
 	# make a material
 	var material = ShaderMaterial.new()
 	material.shader = preload("./gaussian_splat.gdshader")
+	
+	var image_resolution : Vector2 = Vector2(1920, 1080)
+	var cropped_frame_mm : Vector2 = get_cropped_sensor_size(film_format_35mm, image_resolution)
+	var fovy_degrees := 80.0
+	var focal_length_px : Vector2 = get_camera_focal_length_px(deg_to_rad(fovy_degrees), image_resolution, cropped_frame_mm)
+	
+	material.set_shader_parameter("u_focal_length", focal_length_px)
+	#print("FOCAL: ", image_resolution, cropped_frame_mm, fovy_degrees, focal_length_px)
 	
 	for mesh_i in range(len(state.meshes)):
 		var gltf_mesh: GLTFMesh = state.meshes[mesh_i]
@@ -201,7 +212,6 @@ func add_gaussian_surface(import_mesh: ImporterMesh, material: ShaderMaterial, g
 		(Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT) |
 		(Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM2_SHIFT) |
 		(Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM3_SHIFT))
-
 
 func extract_gaussian_data(state: GLTFState, json: Dictionary, extensions: Dictionary, mesh_index: int, primitive_index: int) -> Dictionary:
 	if extensions.has(EXTENSION_NAME):
@@ -394,3 +404,51 @@ func get_type_components(type: String) -> int:
 			return 4
 		_:
 			return 0
+
+# The physical distance from the focal point to the image in pixels. 
+static func get_camera_focal_length_px(fovy:float, image_resolution:Vector2, image_physical_size_mm:Vector2) -> Vector2:
+	# Applying SOHCAHTOA to get the ratio between the opposite and adjecent side of the triangle.
+	# T=O/A -> A=O/T
+	var adjacent_ratio := 0.5 / tan(fovy / 2.0)
+	
+	# The physical distance from the focal point to the image in mm.
+	var focal_length_mm : float = image_physical_size_mm.y * adjacent_ratio
+	
+	# How many pixels per milimeter on the image.
+	# Pixels may be non-square, thus it has split values for x and y. 
+	# Aka s_x, s_y
+	var px_per_mm : Vector2 = image_resolution / image_physical_size_mm
+	
+	# The physical distance from the focal point to the image in pixels. 
+	# Pixels may be non-square, thus it has split values for x and y. 
+	# Aka f_x, f_y
+	var focal_length_px : Vector2 = focal_length_mm * px_per_mm
+	
+	return focal_length_px
+
+static func get_camera_intrinsic_matrix(fovy:float, image_resolution:Vector2, image_physical_size_mm:Vector2, optical_center:=Vector2()) -> Projection:
+	var focal_length_px : Vector2 = get_camera_focal_length_px(fovy, image_resolution, image_physical_size_mm)
+	
+	var projection := Projection()
+	
+	projection[0].x = focal_length_px.x
+	projection[1].y = focal_length_px.y
+	projection[2].x = optical_center.x
+	projection[2].y = optical_center.y
+	
+	return projection
+
+# What is the largest image that can fit inside of the film without stretching?
+static func get_cropped_sensor_size(film_size:Vector2, image_size:Vector2) -> Vector2:
+	var scale : float = 1.0
+	
+	var ratio : Vector2 = image_size / film_size
+	
+	if ratio.x > ratio.y:
+		# Width is the limiting factor
+		scale = film_size.x / image_size.x
+	else:
+		# Height is the limiting factor
+		scale = film_size.y / image_size.y
+	
+	return image_size * scale
