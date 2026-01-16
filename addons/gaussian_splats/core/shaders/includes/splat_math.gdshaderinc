@@ -23,18 +23,32 @@
 
 const mat4 UNITY_MATRIX_IT_MV = mat4(1);
 const mat4 unity_CameraInvProjection = mat4(1);
-const vec4 _ProjectionParams = vec4(1);
+//const vec4 _ProjectionParams = vec4(1);
 
 #define mul(A,B) (A*B)
 
 const mat4 unity_to_godot_coordinate_transform = mat4(vec4(1,0,0,0), vec4(0,1,0,0), vec4(0,0,-1,0), vec4(0,0,0,1));
 
 mat4 UNITY_TO_GODOT_MAT4(mat4 M) {
-	return unity_to_godot_coordinate_transform * transpose(M) * inverse(unity_to_godot_coordinate_transform);
+	return transpose(M);
+}
+mat4 GODOT_TO_UNITY_MAT4(mat4 M) {
+	return transpose(M);
 }
 
 mat3 UNITY_TO_GODOT_MAT3(mat3 M) {
-	return mat3(unity_to_godot_coordinate_transform) * transpose(M) * inverse(mat3(unity_to_godot_coordinate_transform));
+	return transpose(M);
+}
+mat3 GODOT_TO_UNITY_MAT3(mat3 M) {
+	return transpose(M);
+}
+
+mat4 UNITY_TO_GODOT_TRANSFORM4(mat4 M) {
+	return unity_to_godot_coordinate_transform * UNITY_TO_GODOT_MAT4(M) * inverse(unity_to_godot_coordinate_transform);
+}
+
+mat3 UNITY_TO_GODOT_TRANSFORM3(mat3 M) {
+	return mat3(unity_to_godot_coordinate_transform) * UNITY_TO_GODOT_MAT3(M) * inverse(mat3(unity_to_godot_coordinate_transform));
 }
 
 //#define UNITY_MATRIX_TO_GODOT(M) transpose(M)
@@ -117,7 +131,7 @@ Ellipse extractEllipse(float a, float b, float c, float d, float e, float f) {
     return ellipse;
 }
 
-float4x4 CreateClipToViewMatrix()
+float4x4 CreateClipToViewMatrix(mat4 proj, vec4 _ProjectionParams)
 {
     float4x4 flipZ = float4x4(vec4(1, 0, 0, 0),
                               vec4(0, 1, 0, 0),
@@ -127,7 +141,7 @@ float4x4 CreateClipToViewMatrix()
                                vec4(0, 1, 0, 0),
                                vec4(0, 0, 2, -1),
                                vec4(0, 0, 0, 1));
-    float4x4 invP = unity_CameraInvProjection;
+    float4x4 invP = proj;
     float4x4 flipY = float4x4(vec4(1, 0, 0, 0),
                               vec4(0, _ProjectionParams.x, 0, 0),
                               vec4(0, 0, 1, 0),
@@ -169,9 +183,9 @@ float dotM(float4 a, float4 b)
     return dot(a * s, b);
 }
 
-Ellipse GetProjectedEllipsoid(float3 pos, float3 scale, float4 rotation) {
+Ellipse GetProjectedEllipsoid(float4x4 P_inv, float3 pos, float3 scale, float4 rotation) {
     float4x4 S_inv   = InverseSplat(pos, scale, rotation);
-    float4x4 P_inv   = CreateClipToViewMatrix(); // inverse(UNITY_MATRIX_P)
+    //float4x4 P_inv   = CreateClipToViewMatrix(); // inverse(UNITY_MATRIX_P)
     float4x4 MV_inv  = transpose(UNITY_MATRIX_IT_MV);
     float4x4 inv = mul(S_inv, mul(MV_inv, P_inv));
 
