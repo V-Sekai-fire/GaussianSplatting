@@ -250,15 +250,17 @@ void vertex() {
 	} 
 	else {
 		vec3 scale = exp(a_glob_scale);
+		//scale = vec3(10);
 
 		mat3 rotation_matrix = mat3(TANGENT, BINORMAL, NORMAL);
-
+		
 		mat3 scale_matrix = mat3(vec3(scale.x, 0, 0),
 								 vec3(0, scale.y, 0),
 								 vec3(0, 0, scale.z));
 		//scale_matrix = mat3(1);
 
 		mat4 ellipse_transform = mat4(mat3(MODELVIEW_MATRIX) * rotation_matrix * scale_matrix);
+		//ellipse_transform = mat4(1);
 		ellipse_transform[3].xyz = view_space_pos.xyz;
 		
 	 	{
@@ -270,7 +272,8 @@ void vertex() {
 			QUAD_DIR.y *= -1.0;
 			QUAD_SIZE.x = length(mat2(PROJECTION_MATRIX) * ellipse_transform[0].xy * VIEWPORT_SIZE * 0.5);
 			QUAD_SIZE.y = length(mat2(PROJECTION_MATRIX) * ellipse_transform[1].xy * VIEWPORT_SIZE * 0.5);
-
+			//QUAD_SIZE *= 10.0;
+			
 			vec4 clip_space_pos = PROJECTION_MATRIX * view_space_pos;
 		    vec3 ndc_pos = clip_space_pos.xyz / clip_space_pos.w;
 			
@@ -346,7 +349,7 @@ void fragment () {
 	// improve performance, especially on mobile or integrated GPUs.r;
 	if (OUTPUT_IS_SRGB) {
 		if (final_alpha < 1.0 / 255.0) {
-			discard; // FIXME
+			//discard; // FIXME
 		}
 	}
 
