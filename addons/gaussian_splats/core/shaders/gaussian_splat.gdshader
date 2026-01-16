@@ -21,6 +21,7 @@ uniform int u_sh_degree = 3;
 #define SCREEN_QUAD_OUTPUT
 //#define SCREEN_QUAD_WIREFRAME
 #include "includes/screen_quad_renderer.gdshaderinc"
+#include "includes/splat_math.gdshaderinc"
 
 // All attributes are now always declared. The shader program requires a fixed set of inputs.
 // VERTEX_ID & 3 // in vec2 a_quad_vertex;
