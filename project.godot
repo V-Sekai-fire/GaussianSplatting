@@ -28,4 +28,4 @@ window/size/window_height_override=720
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gaussian_splats/plugin.cfg")
+enabled=PackedStringArray("res://addons/gaussian_splats/plugin.cfg", "res://addons/godot-boilerplate-addons/TechnicalCommands/plugin.cfg")

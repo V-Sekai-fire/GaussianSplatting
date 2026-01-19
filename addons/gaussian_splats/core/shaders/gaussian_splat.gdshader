@@ -250,7 +250,7 @@ void vertex() {
 	vec2 CUSTOM3y = unpackHalf2x16(floatBitsToUint(CUSTOM3.y));
 	vec3 a_glob_scale = vec3(unpackHalf2x16(floatBitsToUint(UV.x)), UVy.x);
 	float a_glob_opacity = COLOR.w;
-	vec3 a_sh_0 = COLOR.rgb / SH_C0;
+	vec3 a_sh_0 = (COLOR.rgb - 0.5) / SH_C0;
 	vec3 a_sh_1 = vec3(unpackHalf2x16(floatBitsToUint(UV2.x)), UV2y.x);
 	vec3 a_sh_2 = vec3(unpackHalf2x16(floatBitsToUint(CUSTOM0.x)), CUSTOM0y.x);
 	vec3 a_sh_3 = vec3(CUSTOM0y.y, unpackHalf2x16(floatBitsToUint(CUSTOM0.z)));

@@ -61,11 +61,12 @@ size = Vector2(2, 2)
 
 [node name="Scenes" type="Node3D" unique_id=1741955552]
 
-[node name="gltf_with_grid_instanced" parent="." unique_id=1725346123 instance=ExtResource("1_uw00l")]
+[node name="gltf_with_grid_instanced" parent="." unique_id=927108431 instance=ExtResource("1_uw00l")]
 visible = false
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=1773469637]
 transform = Transform3D(-0.9999361, 0.002859197, -0.010939123, 0, 0.96749806, 0.25287837, 0.011306609, 0.25286222, -0.96743625, 5.7578177, 88.91049, -277.14102)
+visible = false
 
 [node name="Node" type="Node" parent="." unique_id=924053255]
 script = SubResource("GDScript_uw00l")
@@ -95,7 +96,7 @@ mesh = SubResource("QuadMesh_huo0t")
 transform = Transform3D(3.1331394, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 visible = false
 
-[node name="rotations2D_GLTF" parent="." unique_id=2111195412 instance=ExtResource("3_ptdrs")]
+[node name="rotations2D_GLTF" parent="." unique_id=53574096 instance=ExtResource("3_ptdrs")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -131.44525, -137.87589, 0)
 
 [editable path="gltf_with_grid_instanced"]
