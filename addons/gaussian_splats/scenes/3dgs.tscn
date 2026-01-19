@@ -2,7 +2,6 @@
 
 [ext_resource type="PackedScene" uid="uid://2ohhmwno7h3c" path="res://addons/gaussian_splats/art/gltf_with_grid_instanced.glb" id="1_uw00l"]
 [ext_resource type="Shader" uid="uid://c00bpo3mxet1h" path="res://addons/gaussian_splats/core/shaders/splat_test.gdshader" id="2_huo0t"]
-[ext_resource type="Material" uid="uid://bonakm4g2gnm4" path="res://addons/gaussian_splats/core/gaussian_splat.tres" id="3_huo0t"]
 [ext_resource type="PackedScene" uid="uid://dmsjkrhv0bc66" path="res://addons/gaussian_splats/art/rotations2D_GLTF.glb" id="3_ptdrs"]
 [ext_resource type="PackedScene" uid="uid://vpucwc7uuf1s" path="res://addons/gaussian_splats/art/gltf_with_grid_instanced_extra_colors.glb" id="5_tl0ik"]
 
@@ -87,20 +86,15 @@ transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0, 0, 0)
 visible = false
 mesh = SubResource("BoxMesh_uw00l")
 
-[node name="rotations2D_GLTF" parent="." unique_id=663464679 instance=ExtResource("3_ptdrs")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.774044, 176.64052, 430.87918)
-visible = false
-
-[node name="Mesh" parent="rotations2D_GLTF" index="0"]
-material_override = ExtResource("3_huo0t")
-
 [node name="MeshInstance3D3" type="MeshInstance3D" parent="." unique_id=851379264]
 visible = false
 material_override = SubResource("ShaderMaterial_ptdrs")
 mesh = SubResource("QuadMesh_huo0t")
 
-[node name="gltf_with_grid_instanced_extra_colors" parent="." unique_id=1645866305 instance=ExtResource("5_tl0ik")]
+[node name="gltf_with_grid_instanced_extra_colors" parent="." unique_id=727214253 instance=ExtResource("5_tl0ik")]
 transform = Transform3D(3.1331394, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+visible = false
+
+[node name="rotations2D_GLTF" parent="." unique_id=1759648225 instance=ExtResource("3_ptdrs")]
 
 [editable path="gltf_with_grid_instanced"]
-[editable path="rotations2D_GLTF"]

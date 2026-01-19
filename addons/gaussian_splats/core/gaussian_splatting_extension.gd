@@ -180,14 +180,18 @@ func add_gaussian_surface(import_mesh: ImporterMesh, material: ShaderMaterial, g
 	print("Tangent len " + str((arrays[Mesh.ARRAY_TANGENT])))
 	arrays[Mesh.ARRAY_COLOR] = vec4array_alpha_to_color_array_quads(gaussian_data["sh_coefficients"][0], gaussian_data["opacities"])
 	print("Color len " + str((arrays[Mesh.ARRAY_COLOR])))
-	arrays[Mesh.ARRAY_TEX_UV] = vec4array_to_vec2_uv_quads(gaussian_data["scales"], gaussian_data["sh_coefficients"][4], 2)
-	arrays[Mesh.ARRAY_TEX_UV2] = vec4array_to_vec2_uv_quads(gaussian_data["sh_coefficients"][1], gaussian_data["sh_coefficients"][5], 2)
-	arrays[Mesh.ARRAY_CUSTOM0] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][2], gaussian_data["sh_coefficients"][3], gaussian_data["sh_coefficients"][4]).to_float32_array()
-	arrays[Mesh.ARRAY_CUSTOM1] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][6], gaussian_data["sh_coefficients"][7], gaussian_data["sh_coefficients"][5]).to_float32_array()
-	arrays[Mesh.ARRAY_CUSTOM2] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][8], gaussian_data["sh_coefficients"][9], gaussian_data["sh_coefficients"][10]).to_float32_array()
-	arrays[Mesh.ARRAY_CUSTOM3] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][11], gaussian_data["sh_coefficients"][12], gaussian_data["sh_coefficients"][13]).to_float32_array()
-	arrays[Mesh.ARRAY_WEIGHTS] = vec4array_pairs_2nd_to_half8_custom_quads(gaussian_data["sh_coefficients"][14], gaussian_data["sh_coefficients"][15],
-		gaussian_data["sh_coefficients"][10], gaussian_data["sh_coefficients"][13]).to_float32_array()
+	print("SH Coefficients " + str(gaussian_data["sh_coefficients"]))
+	
+	if gaussian_data["sh_coefficients"].size() > 1:
+		arrays[Mesh.ARRAY_TEX_UV] = vec4array_to_vec2_uv_quads(gaussian_data["scales"], gaussian_data["sh_coefficients"][4], 2)
+		arrays[Mesh.ARRAY_TEX_UV2] = vec4array_to_vec2_uv_quads(gaussian_data["sh_coefficients"][1], gaussian_data["sh_coefficients"][5], 2)
+		arrays[Mesh.ARRAY_CUSTOM0] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][2], gaussian_data["sh_coefficients"][3], gaussian_data["sh_coefficients"][4]).to_float32_array()
+		arrays[Mesh.ARRAY_CUSTOM1] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][6], gaussian_data["sh_coefficients"][7], gaussian_data["sh_coefficients"][5]).to_float32_array()
+		arrays[Mesh.ARRAY_CUSTOM2] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][8], gaussian_data["sh_coefficients"][9], gaussian_data["sh_coefficients"][10]).to_float32_array()
+		arrays[Mesh.ARRAY_CUSTOM3] = vec4array_pairs_to_half8_custom_quads(gaussian_data["sh_coefficients"][11], gaussian_data["sh_coefficients"][12], gaussian_data["sh_coefficients"][13]).to_float32_array()
+		arrays[Mesh.ARRAY_WEIGHTS] = vec4array_pairs_2nd_to_half8_custom_quads(gaussian_data["sh_coefficients"][14], gaussian_data["sh_coefficients"][15],
+			gaussian_data["sh_coefficients"][10], gaussian_data["sh_coefficients"][13]).to_float32_array()
+	
 	var indices: PackedInt32Array
 	indices.resize(len(gaussian_data["positions"]) / 4 * 6)
 	# 0 1

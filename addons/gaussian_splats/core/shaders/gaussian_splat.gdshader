@@ -387,7 +387,7 @@ void fragment () {
 	ALBEDO = final_color;
 	ALPHA = final_alpha;
 	
-	ALPHA += 1.0 - clamp(abs(length(UV) - 1.0) / fwidth( length(UV)), 0.0, 1.0);
+	//ALPHA += 1.0 - clamp(abs(length(UV) - 1.0) / fwidth( length(UV)), 0.0, 1.0);
 	
 	processQuadFragment();
 }
