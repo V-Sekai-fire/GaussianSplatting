@@ -269,6 +269,8 @@ void vertex() {
 
 	vec3 coefficients[16] = vec3[16](a_sh_0, a_sh_1, a_sh_2, a_sh_3, a_sh_4, a_sh_5, a_sh_6, a_sh_7, a_sh_8, a_sh_9, a_sh_10, a_sh_11, a_sh_12, a_sh_13, a_sh_14, a_sh_15);
 
+	//a_glob_position += sin(a_glob_position.zxy*4.0+TIME)*.1;
+
 	// Steps 1-4: Projection, Covariance, and Bounding Box logic (identical)
 	vec3 view_space_pos = (MODELVIEW_MATRIX * vec4(a_glob_position, 1)).xyz;
 	vec3 eye_space_pos = view_space_pos - EYE_OFFSET;
